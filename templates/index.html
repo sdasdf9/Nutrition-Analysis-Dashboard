@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Пищевая ценность</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <div class="navbar">
+        <h1>Анализ пищевой ценности продуктов</h1>
+        <div class="badge">В базе: {{ total_records }} продуктов</div>
+    </div>
+
+    <div class="container">
+        
+        <div class="card interactive-section">
+            <h2>Интерактивный анализатор продукта (Дневная норма)</h2>
+            <p style="font-size: 14px; opacity: 0.9;">Выберите продукт из списка, чтобы увидеть, какую часть дневной нормы (2000 ккал) составят 100 грамм:</p>
+            
+            <div class="search-box">
+                <input type="text" id="product-input" list="products-list" placeholder="Начните вводить название (например: Гречка)..." onchange="showProduct()">
+                <datalist id="products-list">
+                    {% for p in product_names %}
+                        <option value="{{ p }}"></option>
+                    {% endfor %}
+                </datalist>
+            </div>
+
+            <div id="product-details" class="hidden">
+                <h3 id="p-name" style="margin-top: 0; font-size: 22px; color: #f1c40f;">Название</h3>
+                
+                <div class="progress-container">
+                    <div class="progress-label"><span>Калории (норма 2000 ккал)</span> <span id="p-cal-val">0</span></div>
+                    <div class="progress-bar-bg"><div class="progress-bar-fill" id="p-cal-bar" style="background:#e74c3c;"></div></div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-label"><span>Белки (норма 100 г)</span> <span id="p-prot-val">0</span></div>
+                    <div class="progress-bar-bg"><div class="progress-bar-fill" id="p-prot-bar" style="background:#3498db;"></div></div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-label"><span>Жиры (норма 70 г)</span> <span id="p-fat-val">0</span></div>
+                    <div class="progress-bar-bg"><div class="progress-bar-fill" id="p-fat-bar" style="background:#f1c40f;"></div></div>
+                </div>
+                <div class="progress-container">
+                    <div class="progress-label"><span>Углеводы (норма 250 г)</span> <span id="p-carb-val">0</span></div>
+                    <div class="progress-bar-bg"><div class="progress-bar-fill" id="p-carb-bar" style="background:#2ecc71;"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid-3">
+            <div class="card" style="grid-column: span 3;">
+                <h2>Общая статистика с продуктами-рекордсменами</h2>
+                {{ stats_html|safe }}
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="card">
+                <h2>Рекордсмены по белку</h2>
+                {{ top_protein_html|safe }}
+            </div>
+            <div class="card">
+                <h2>Самые калорийные</h2>
+                {{ high_cal_html|safe }}
+            </div>
+        </div>
+
+        <div class="card">
+            <form action="/" method="get">
+                <button type="submit" name="action" value="plot" class="btn-plot">Сформировать графики анализа данных</button>
+            </form>
+        </div>
+
+        {% if plot_bar %}
+        <div class="grid-2">
+            <div class="card">
+                <h2>Содержание БЖУ по категориям</h2>
+                <img class="chart-img" src="data:image/png;base64,{{ plot_bar }}" alt="Bar Chart">
+            </div>
+            <div class="card">
+                <h2>Химический профиль: Доля макронутриентов (%)</h2>
+                <img class="chart-img" src="data:image/png;base64,{{ plot_macro_profile }}" alt="Stacked Bar Chart">
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+
+    <script type="application/json" id="products-data">
+        {{ products_json|safe }}
+    </script>
+
+    <script>
+        const productsData = JSON.parse(document.getElementById('products-data').textContent);
+        
+        function showProduct() {
+            const inputVal = document.getElementById('product-input').value;
+            const product = productsData.find(p => p.name === inputVal);
+            
+            const detailsDiv = document.getElementById('product-details');
+            
+            if (product) {
+                detailsDiv.classList.remove('hidden');
+                document.getElementById('p-name').innerText = product.name + ' (' + product.category + ') - 100г';
+                
+                let calPct = Math.min((product.calories / 2000) * 100, 100);
+                let protPct = Math.min((product.protein / 100) * 100, 100);
+                let fatPct = Math.min((product.fat / 70) * 100, 100);
+                let carbPct = Math.min((product.carbs / 250) * 100, 100);
+                
+                document.getElementById('p-cal-val').innerText = product.calories + ' ккал (' + Math.round(calPct) + '%)';
+                document.getElementById('p-prot-val').innerText = product.protein + ' г (' + Math.round(protPct) + '%)';
+                document.getElementById('p-fat-val').innerText = product.fat + ' г (' + Math.round(fatPct) + '%)';
+                document.getElementById('p-carb-val').innerText = product.carbs + ' г (' + Math.round(carbPct) + '%)';
+                
+                document.getElementById('p-cal-bar').style.width = calPct + '%';
+                document.getElementById('p-prot-bar').style.width = protPct + '%';
+                document.getElementById('p-fat-bar').style.width = fatPct + '%';
+                document.getElementById('p-carb-bar').style.width = carbPct + '%';
+            } else {
+                detailsDiv.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
